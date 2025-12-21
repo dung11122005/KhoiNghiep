@@ -1,6 +1,5 @@
-import React from 'react'
 import { Layout, Row, Col, Button } from 'antd'
-import logo from '../assets/react.svg'
+import logo from '../assets/istockphoto-1204131571-612x612.jpg'
 
 const { Header } = Layout
 
