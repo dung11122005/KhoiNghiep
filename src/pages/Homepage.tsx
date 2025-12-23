@@ -30,8 +30,8 @@ import product7 from '../assets/2. Combo 1_ _Chóa_ sum vầy.png'
 import product8 from '../assets/3. Combo 2_ Phát lộc phát mèo.png'
 import product9 from '../assets/4. Combo 3_ Tết này ai order_.png'
 
-const { Title, Text, Paragraph } = Typography
-const { Option } = Select
+const { Title, Text } = Typography
+const { } = Select
 
 // --- ĐỊNH NGHĨA KIỂU DỮ LIỆU ---
 type ProductType = {
