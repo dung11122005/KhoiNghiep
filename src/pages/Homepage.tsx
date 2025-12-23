@@ -1,23 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-    Row,
-    Col,
-    Image,
-    Typography,
-    Card,
-    Button,
-    Form,
-    Input,
-    Select,
-    Divider,
-    message,
-    List,
-    Modal,
-    Badge,
-    Drawer,
-    Avatar
+    Row, Col, Image, Typography, Card, Button, Form, Input, Select,
+    Divider, message, List, Modal, Badge, Drawer, Avatar, Upload
 } from 'antd'
 import { ShoppingCartOutlined, DeleteOutlined, PlusOutlined, MinusOutlined } from '@ant-design/icons'
+
+
+
 
 // Import ảnh (giữ nguyên như cũ)
 import product1 from '../assets/1. Full Collection Vạn sự như _Boss_.png'
@@ -47,22 +36,12 @@ type CartItem = ProductType & {
     quantity: number
 }
 
-type OrderPayload = {
-    name: string
-    phone: string
-    orderType: string
-    combo?: string
-    address: string
-    product: string
-    variant?: string
-    quantity: number
-    note?: string
-    image?: string
-    date: string
-    price: string
-}
+
 
 const SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzddFf0ZKSvEDVIZ0B4m6w7R-8L-BoC7ZsN6rlPT22dQaULXkIiv-Xf5_AJ7lEhsQcgJw/exec'
+
+
+
 
 export default function Homepage() {
     // 1. DATA SẢN PHẨM 
@@ -87,6 +66,10 @@ export default function Homepage() {
     const [loading, setLoading] = useState(false)
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768) // Check mobile state
     const [form] = Form.useForm()
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+    const [orderId, setOrderId] = useState<string | null>(null)
+    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+    const [pendingOrderValues, setPendingOrderValues] = useState<any>(null)
 
     // Lắng nghe thay đổi kích thước màn hình
     useEffect(() => {
@@ -135,12 +118,15 @@ export default function Homepage() {
         setIsCheckoutModalOpen(true)
         form.setFieldsValue({ orderType: 'Lẻ' })
     }
+    const [proofImageBase64, setProofImageBase64] = useState<string | null>(null) // state mới nếu dùng upload
 
     const onSubmit = async (values: any) => {
         const productSummary = cart.map(item => `${item.label} (x${item.quantity})`).join(', ')
         const representativeImage = cart[0]?.src || ''
+        const orderIdLocal = `DH${Date.now()}`
 
-        const payload: OrderPayload = {
+        // Lưu tạm thông tin đơn (chưa gửi lên sheet)
+        setPendingOrderValues({
             name: values.name,
             phone: values.phone,
             orderType: values.orderType,
@@ -153,31 +139,112 @@ export default function Homepage() {
             image: representativeImage,
             price: cartTotal.toString(),
             date: new Date().toLocaleString(),
+            orderId: orderIdLocal
+        })
+
+        // Tạo QR hiển thị cho khách (chưa gửi sheet)
+        try {
+            // Tạo QR bằng VietQR API (chắc chắn quét được)
+            const amount = cartTotal
+            const qrUrl = `https://img.vietqr.io/image/970407-8886756825-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(orderIdLocal)}&accountName=${encodeURIComponent('ÔN GIA CÁT TƯỜNG')}`
+            setOrderId(orderIdLocal)
+            setQrDataUrl(qrUrl) // dùng URL trực tiếp thay vì toDataURL
+            setProofImageBase64(null)
+            setIsCheckoutModalOpen(false)
+            setPaymentModalOpen(true)
+        } catch (e) {
+            message.error('Không thể tạo QR. Vui lòng thử lại.')
+        }
+    }
+
+
+    const finalizeOrder = async () => {
+        if (!pendingOrderValues || !orderId) {
+            return message.error('Thiếu thông tin đơn.')
+        }
+        if (!proofImageBase64) {
+            return message.warning('Vui lòng tải ảnh chứng từ trước khi hoàn tất.')
         }
 
         setLoading(true)
         try {
+            const payload: any = { ...pendingOrderValues }
+
+            // Tách base64 data và mime type
+            const base64Data = proofImageBase64.includes(',')
+                ? proofImageBase64.split(',')[1]
+                : proofImageBase64;
+
+            const mimeMatch = proofImageBase64.match(/^data:(.*?);base64,/);
+            const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+
+            payload.proofImageBase64 = base64Data;
+            payload.proofImageMime = mime;
+
+            // DEBUG Console
+            console.log('=== DEBUG INFO ===');
+            console.log('Base64 length:', base64Data.length);
+            console.log('MIME type:', mime);
+            console.log('First 100 chars:', base64Data.substring(0, 100));
+            console.log('Order ID:', orderId);
+
             const params = new URLSearchParams()
-            Object.entries(payload).forEach(([k, v]) => params.append(k, v == null ? '' : String(v)))
+            Object.entries(payload).forEach(([k, v]) => {
+                if (v != null) {
+                    params.append(k, String(v))
+                }
+            })
+
+            console.log('Total payload size:', params.toString().length, 'bytes');
+
             const res = await fetch(SHEETS_WEBHOOK_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
                 body: params.toString(),
             })
-            const json = await res.json().catch(() => ({ status: res.ok ? 'ok' : 'error' }))
 
-            if (res.ok || json.status === 'ok') {
+            const responseText = await res.text();
+            console.log('Response status:', res.status);
+            console.log('Response body:', responseText);
+
+            const json = JSON.parse(responseText);
+
+            if (res.ok && json.status === 'ok') {
                 Modal.success({
-                    title: 'Đặt hàng thành công',
-                    content: 'Chúng tôi sẽ liên hệ bạn sau vài phút nữa.',
+                    title: 'Đặt hàng thành công!',
+                    content: (
+                        <div>
+                            <p>Cảm ơn bạn đã đặt hàng.</p>
+                            <p><strong>Mã đơn:</strong> {orderId}</p>
+                            <p>Chúng tôi sẽ liên hệ bạn sau vài phút nữa.</p>
+                            {json.proofFileUrl && json.proofFileUrl !== '' && !json.proofFileUrl.startsWith('ERROR') && (
+                                <p style={{ fontSize: 12, color: '#52c41a', marginTop: 8 }}>
+                                    ✓ Ảnh chứng từ đã lưu
+                                </p>
+                            )}
+                            {json.proofFileUrl && json.proofFileUrl.startsWith('ERROR') && (
+                                <p style={{ fontSize: 12, color: '#ff4d4f', marginTop: 8 }}>
+                                    ⚠ Lỗi lưu ảnh: {json.proofFileUrl}
+                                </p>
+                            )}
+                        </div>
+                    ),
+                    onOk: () => {
+                        form.resetFields()
+                        setCart([])
+                        setPaymentModalOpen(false)
+                        setOrderId(null)
+                        setQrDataUrl(null)
+                        setPendingOrderValues(null)
+                        setProofImageBase64(null)
+                    }
                 })
-                form.resetFields()
-                setCart([])
-                setIsCheckoutModalOpen(false)
             } else {
                 message.error('Lỗi server: ' + (json.message || 'Không rõ'))
+                console.error('Server error:', json);
             }
         } catch (err: any) {
+            console.error('Client error:', err);
             message.error('Không thể gửi đơn: ' + (err.message || err))
         } finally {
             setLoading(false)
@@ -407,6 +474,49 @@ export default function Homepage() {
                 )}
             </Drawer>
 
+            <Modal
+                title="Thanh toán - Quét QR và tải ảnh chứng từ"
+                open={paymentModalOpen}
+                onCancel={() => setPaymentModalOpen(false)}
+                footer={null}
+                width={520}
+            >
+                <div style={{ textAlign: 'center' }}>
+                    <p>Quét mã dưới đây để chuyển khoản hoặc dùng phương thức chuyển khoản tay.</p>
+                    {qrDataUrl ? <img src={qrDataUrl} alt="QR thanh toán" style={{ width: 260, height: 260 }} /> : <div>Đang tạo QR...</div>}
+                    <div style={{ marginTop: 8, fontSize: 14 }}>
+                        <div><strong>Mã đơn:</strong> {orderId}</div>
+                        <div><strong>Số tiền:</strong> {formatCurrency(cartTotal)}</div>
+                        <div><strong>Chủ TK:</strong> ÔN GIA CÁT TƯỜNG</div>
+                        <div><strong>STK:</strong> 8886756825</div>
+                    </div>
+
+                    <div style={{ marginTop: 12, textAlign: 'left' }}>
+                        <div style={{ marginBottom: 8 }}><strong>Ảnh chứng từ (bắt buộc):</strong></div>
+                        <Upload
+                            beforeUpload={(file) => {
+                                const reader = new FileReader()
+                                reader.onload = () => setProofImageBase64(String(reader.result))
+                                reader.readAsDataURL(file)
+                                return false
+                            }}
+                            maxCount={1}
+                            accept="image/*"
+                            showUploadList={{ showRemoveIcon: true }}
+                            onRemove={() => setProofImageBase64(null)}
+                        >
+                            <Button>Chọn ảnh</Button>
+                        </Upload>
+                    </div>
+
+                    <div style={{ marginTop: 16 }}>
+                        <Button type="primary" onClick={finalizeOrder} loading={loading} disabled={!proofImageBase64} style={{ minWidth: 180 }}>
+                            HOÀN TẤT ĐẶT HÀNG
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
             {/* --- MODAL THANH TOÁN --- */}
             <Modal
                 title="Thông tin giao hàng"
@@ -444,6 +554,7 @@ export default function Homepage() {
                     <Form.Item name="address" label="Địa chỉ" rules={[{ required: true, message: 'Vui lòng nhập địa chỉ' }]}>
                         <Input.TextArea rows={2} placeholder="Số nhà, Đường, Phường..." />
                     </Form.Item>
+
                     <Form.Item name="note" label="Ghi chú (tùy chọn)">
                         <Input.TextArea placeholder="Giao giờ hành chính..." />
                     </Form.Item>
@@ -451,7 +562,7 @@ export default function Homepage() {
                     <Form.Item name="orderType" initialValue="Lẻ" hidden><Input /></Form.Item>
 
                     <Button type="primary" htmlType="submit" block loading={loading} style={{ height: 48, fontWeight: 'bold' }}>
-                        HOÀN TẤT ĐẶT HÀNG
+                        ĐẶT HÀNG
                     </Button>
                 </Form>
             </Modal>
