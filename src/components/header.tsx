@@ -47,14 +47,28 @@ export default function AppHeader() {
             </Row>
 
             <style>{`
+        /* Responsive cho header */
+        @media (max-width: 1024px) {
+          .header-greeting { 
+            font-size: 14px !important; 
+          }
+        }
+        
         /* tablet/phone: ẩn câu chào, chỉ hiện logo + tên + SDT */
         @media (max-width: 900px) {
           .header-greeting { display: none !important; }
           .ant-layout-header { padding: 8px 12px; }
           .ant-layout-header img { width: 36px; height: 36px; }
         }
+        
         @media (max-width: 480px) {
           .ant-layout-header a { gap: 8px; }
+          .ant-layout-header a > div { font-size: 16px !important; }
+        }
+        
+        @media (max-width: 360px) {
+          .ant-layout-header a > div { font-size: 14px !important; }
+          .ant-layout-header img { width: 32px; height: 32px; }
         }
       `}</style>
         </Header>
