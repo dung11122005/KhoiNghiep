@@ -82,7 +82,6 @@ export default function Homepage() {
     // Lắng nghe thay đổi kích thước màn hình và điều chỉnh vị trí nút giỏ hàng
     useEffect(() => {
         const handleResize = () => {
-            const wasMobile = isMobile
             const nowMobile = window.innerWidth < 768
             setIsMobile(nowMobile)
             
@@ -161,7 +160,7 @@ export default function Homepage() {
             setTimeout(() => setIsSnapping(false), 300)
         }
 
-        const handleMouseUp = (e: MouseEvent | TouchEvent) => {
+        const handleMouseUp = () => {
             if (isDragging) {
                 const finalX = cartButtonPosition.x
                 const finalY = cartButtonPosition.y
