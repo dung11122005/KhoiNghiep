@@ -165,7 +165,7 @@ export default function Homepage() {
             setTimeout(() => setIsSnapping(false), 300)
         }
 
-        const handleMouseUp = (e: MouseEvent | TouchEvent) => {
+        const handleMouseUp = () => {
             if (isDragging) {
                 const finalX = cartButtonPosition.x
                 const finalY = cartButtonPosition.y
