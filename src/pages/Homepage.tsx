@@ -77,7 +77,7 @@ export default function Homepage() {
     const [isSnapping, setIsSnapping] = useState(false)
     const cartButtonRef = useRef<HTMLDivElement>(null)
     const dragStartPos = useRef({ x: 0, y: 0, btnX: 0, btnY: 0 })
-    const lastClickTime = useRef(0)
+    const isClickIntent = useRef(true) // Track xem có phải click hay drag
 
     // Lắng nghe thay đổi kích thước màn hình và điều chỉnh vị trí nút giỏ hàng
     useEffect(() => {
@@ -127,6 +127,11 @@ export default function Homepage() {
             const deltaX = e.clientX - dragStartPos.current.x
             const deltaY = e.clientY - dragStartPos.current.y
             
+            // Nếu di chuyển quá 5px thì không phải click nữa
+            if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                isClickIntent.current = false
+            }
+            
             const newX = dragStartPos.current.btnX + deltaX
             const newY = dragStartPos.current.btnY + deltaY
             
@@ -160,13 +165,17 @@ export default function Homepage() {
             setTimeout(() => setIsSnapping(false), 300)
         }
 
-        const handleMouseUp = () => {
+        const handleMouseUp = (e: MouseEvent | TouchEvent) => {
             if (isDragging) {
                 const finalX = cartButtonPosition.x
                 const finalY = cartButtonPosition.y
                 snapToEdge(finalX, finalY)
             }
             setIsDragging(false)
+            // Reset click intent sau một khoảng thời gian ngắn
+            setTimeout(() => {
+                isClickIntent.current = true
+            }, 100)
         }
 
         const handleTouchMove = (e: TouchEvent) => {
@@ -176,6 +185,11 @@ export default function Homepage() {
             const touch = e.touches[0]
             const deltaX = touch.clientX - dragStartPos.current.x
             const deltaY = touch.clientY - dragStartPos.current.y
+            
+            // Nếu di chuyển quá 5px thì không phải click nữa
+            if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                isClickIntent.current = false
+            }
             
             const newX = dragStartPos.current.btnX + deltaX
             const newY = dragStartPos.current.btnY + deltaY
@@ -209,7 +223,7 @@ export default function Homepage() {
     const handleCartButtonMouseDown = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
-        lastClickTime.current = Date.now()
+        isClickIntent.current = true // Reset click intent
         setIsDragging(true)
         setIsSnapping(false)
         dragStartPos.current = {
@@ -223,22 +237,20 @@ export default function Homepage() {
     const handleCartButtonTouchStart = (e: React.TouchEvent) => {
         if (e.touches.length === 0) return
         e.stopPropagation()
-        const touch = e.touches[0]
-        lastClickTime.current = Date.now()
+        isClickIntent.current = true // Reset click intent
         setIsDragging(true)
         setIsSnapping(false)
         dragStartPos.current = {
-            x: touch.clientX,
-            y: touch.clientY,
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY,
             btnX: cartButtonPosition.x,
             btnY: cartButtonPosition.y
         }
     }
 
     const handleCartButtonClick = () => {
-        // Chỉ mở giỏ hàng nếu không kéo (click nhanh < 200ms)
-        const timeSinceMouseDown = Date.now() - lastClickTime.current
-        if (timeSinceMouseDown < 200 && !isDragging) {
+        // Chỉ mở giỏ hàng nếu là click (không di chuyển quá 5px)
+        if (isClickIntent.current) {
             setIsCartOpen(true)
         }
     }
