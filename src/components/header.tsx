@@ -1,4 +1,4 @@
-import { Layout, Row, Col, Button } from 'antd'
+import { Layout, Row, Col } from 'antd'
 import logo from '../assets/istockphoto-1204131571-612x612.jpg'
 
 const { Header } = Layout
