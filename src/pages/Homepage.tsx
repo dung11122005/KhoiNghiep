@@ -470,7 +470,7 @@ export default function Homepage() {
 
             {/* --- NÚT LIÊN HỆ FANPAGE --- */}
             <a
-                href="https://www.facebook.com/profile.php?id=61569671987897"
+                href="https://m.me/61585453090393"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{

@@ -28,22 +28,6 @@ export default function AppHeader() {
                         Chào mừng đến OCSEN — Pin cài áo chất lượng, đặt hàng nhanh
                     </div>
                 </Col>
-
-                <Col>
-                    <a href="tel:0900000000" style={{ color: '#fff', textDecoration: 'none' }}>
-                        <Button
-                            type="default"
-                            style={{
-                                background: 'rgba(255,255,255,0.12)',
-                                color: '#fff',
-                                border: 'none',
-                                fontWeight: 600,
-                            }}
-                        >
-                            0900 000 000
-                        </Button>
-                    </a>
-                </Col>
             </Row>
 
             <style>{`
